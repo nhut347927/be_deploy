@@ -1,24 +1,24 @@
 package com.moe.socialnetwork;
 
-import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+import io.github.cdimascio.dotenv.Dotenv;
 /**
  * Author: nhutnm379
  */
 @SpringBootApplication
+@EnableScheduling
 public class MoeApplication {
 
-    public static void main(String[] args) {
-        //Này chỉ dùng cho local.
+	public static void main(String[] args) {
+		  // Load .env vào System properties
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+        dotenv.entries().forEach(entry -> {
+            System.setProperty(entry.getKey(), entry.getValue());
+        });
+		SpringApplication.run(MoeApplication.class, args);
+	}
 
-        // // Load .env vào System properties
-        // Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-        // dotenv.entries().forEach(entry -> {
-        //     System.setProperty(entry.getKey(), entry.getValue());
-        // });
-
-        SpringApplication.run(MoeApplication.class, args);
-    }
 }

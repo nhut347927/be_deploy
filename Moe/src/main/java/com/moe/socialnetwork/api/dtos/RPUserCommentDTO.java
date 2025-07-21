@@ -1,8 +1,4 @@
 package com.moe.socialnetwork.api.dtos;
-
-import java.util.List;
-
-import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,7 +8,9 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class RPListRolePerDTO {
-    @Valid
-    List<RPRolePermissionDTO> rolePermissions;
+public class RPUserCommentDTO {
+    private String code;
+    private String postCode;
+    private String content;
+    private String createAt;
 }

@@ -24,7 +24,7 @@ import com.moe.socialnetwork.api.dtos.RQPostCreateDTO.FFmpegMergeParams;
 import com.moe.socialnetwork.api.dtos.ZRPPageDTO;
 import com.moe.socialnetwork.api.services.IFFmpegService;
 import com.moe.socialnetwork.api.services.IPostService;
-import com.moe.socialnetwork.api.services.ISearchHistoryService;
+import com.moe.socialnetwork.api.services.ISearchService;
 import com.moe.socialnetwork.jpa.AudioJPA;
 import com.moe.socialnetwork.jpa.ImageJPA;
 import com.moe.socialnetwork.jpa.LikeJPA;
@@ -59,11 +59,11 @@ public class PostServiceImpl implements IPostService {
 	private final LikeJPA likeJpa;
 	private final CloudinaryServiceImpl cloudinaryService;
 	private final ViewJPA viewJPA;
-	private final ISearchHistoryService searchHistoryService;
+	private final ISearchService searchHistoryService;
 
 	public PostServiceImpl(PostTagJPA postTagJPA, PostJPA postJPA, TagJPA tagJPA, AudioJPA audioJPA, ImageJPA imageJPA,
 			CloudinaryServiceImpl cloudinaryService, IFFmpegService ffmpegService, LikeJPA likeJpa, ViewJPA viewJPA,
-			ISearchHistoryService searchHistoryService) {
+			ISearchService searchHistoryService) {
 		this.postTagJPA = postTagJPA;
 		this.postJPA = postJPA;
 		this.tagJPA = tagJPA;
@@ -196,22 +196,23 @@ public class PostServiceImpl implements IPostService {
 			if (Boolean.FALSE.equals(dto.getIsUseOtherAudio())) {
 				post.setVideoUrl(dto.getVideoPublicId());
 				post.setVideoThumbnail(String.valueOf(dto.getVideoThumbnail()));
-				File videoFile = ffmpegService.downloadFileFromCloudinary(dto.getVideoPublicId(),
-						"audio.mp3", "video"); // đúng ra ở đây sử dụng type audio nhưng cloudinary nhận
-												// audio là video
+				// File videoFile = ffmpegService.downloadFileFromCloudinary(dto.getVideoPublicId(),
+				// 		"audio.mp3", "video"); // đúng ra ở đây sử dụng type audio nhưng cloudinary nhận
+				// 								// audio là video
 				try {
-					File audioFile = ffmpegService.extractAudioFromVideo(videoFile);
-					String audioPublicId = cloudinaryService.uploadAudio(audioFile);
-					videoFile.delete(); // Xóa file video tạm sau khi trích xuất audio
-					audioFile.delete(); // Xóa file audio tạm sau khi upload
+				//	File audioFile = ffmpegService.extractAudioFromVideo(videoFile);
+				//	String audioPublicId = cloudinaryService.uploadAudio(audioFile);
+//videoFile.delete(); // Xóa file video tạm sau khi trích xuất audio
+				//	audioFile.delete(); // Xóa file audio tạm sau khi upload
 					Audio audioPost = new Audio();
-					audioPost.setAudioName(audioPublicId);
+					// chuyển publicid của audio sang của video
+					audioPost.setAudioName(dto.getVideoPublicId());
 
 					save = postJPA.save(post);
 
 					audioPost.setOwnerPost(save);
 					audioJPA.save(audioPost);
-				} catch (java.io.IOException e) {
+				} catch (Exception e) {
 					throw new AppException("Failed to extract audio from video: " + e.getMessage(), 500);
 				}
 			} else {
@@ -232,15 +233,20 @@ public class PostServiceImpl implements IPostService {
 				ffmpegParams.setVideoPublicId(dto.getVideoPublicId());
 
 				// Mock FFmpeg processing logic
-				try {
-					String vidPublicId = ffmpegService.mergeAndUpload(ffmpegParams);
-					post.setVideoUrl(vidPublicId);
-					cloudinaryService.deleteFile(dto.getVideoPublicId());
+				// xử lí video với audio
+				// nhưng hiện tại ko đủ bộ nhớ nếu deploy lên Railway nên tạm cắt
 
-					save = postJPA.save(post);
-				} catch (Exception e) {
-					throw new AppException("Failed to process video with audio: " + e.getMessage(), 500);
-				}
+				//#################################################################################################
+				// try {
+				// 	String vidPublicId = ffmpegService.mergeAndUpload(ffmpegParams);
+				// 	post.setVideoUrl(vidPublicId);
+				// 	cloudinaryService.deleteFile(dto.getVideoPublicId());
+
+				// 	save = postJPA.save(post);
+				// } catch (Exception e) {
+				// 	throw new AppException("Failed to process video with audio: " + e.getMessage(), 500);
+				// }
+				//#################################################################################################
 			}
 
 		} else if ("IMG".equals(dto.getPostType())) {
@@ -383,7 +389,7 @@ public class PostServiceImpl implements IPostService {
 		return result.stream().limit(9).map(post -> this.toPostResponse(post, user)).collect(Collectors.toList());
 	}
 
-	private RPPostDTO toPostResponse(Post post, User user) {
+	public RPPostDTO toPostResponse(Post post, User user) {
 		RPPostDTO dto = new RPPostDTO();
 		dto.setUserCode(String.valueOf(post.getUser().getCode()));
 		dto.setPostCode(String.valueOf(post.getCode()));
@@ -459,6 +465,7 @@ public class PostServiceImpl implements IPostService {
 			dto.setAudioUrl(post.getAudio().getAudioName());
 			dto.setAudioOwnerAvatar(post.getAudio().getOwnerPost().getUser().getAvatar());
 			dto.setAudioOwnerDisplayName(post.getAudio().getOwnerPost().getUser().getDisplayName());
+			dto.setAudioPostCode(post.getAudio().getOwnerPost().getCode().toString());
 			dto.setAudioCode(String.valueOf(post.getAudio().getId()));
 		} else {
 			// if post does not have audio, it means it uses default audio
@@ -467,6 +474,7 @@ public class PostServiceImpl implements IPostService {
 			dto.setAudioUrl(defaultAudio.getAudioName());
 			dto.setAudioOwnerAvatar(user.getAvatar());
 			dto.setAudioOwnerDisplayName(user.getDisplayName());
+			dto.setAudioPostCode(post.getCode().toString());
 			dto.setAudioCode(defaultAudio.getCode().toString());
 		}
 
